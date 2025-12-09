@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Astro Drift</title>
+    <link href="../../static/fonts/inter.css" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            background: #020617;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+        }
+
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+        }
+
+        h1 {
+            margin: 0;
+            background: linear-gradient(to right, #6366f1, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 2rem;
+            text-shadow: 0 0 20px rgba(99, 102, 241, 0.5);
+        }
+
+        #score-board {
+            font-size: 1.2rem;
+            margin-top: 5px;
+            color: #a855f7;
+        }
+
+        canvas {
+            display: block;
+            background: radial-gradient(circle at center, #0f172a 0%, #020617 100%);
+        }
+
+        #game-over {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(15, 23, 42, 0.9);
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            border: 1px solid #a855f7;
+            box-shadow: 0 0 50px rgba(168, 85, 247, 0.3);
+        }
+
+        .btn {
+            background: #a855f7;
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            border-radius: 50px;
+            margin-top: 15px;
+            font-weight: bold;
+            transition: all 0.2s;
+            display: block;
+            width: 100%;
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(168, 85, 247, 0.6);
+        }
+
+        .outline-btn {
+            background: transparent;
+            border: 1px solid #64748b;
+            color: #94a3b8;
+            margin-top: 10px;
+        }
+
+        .outline-btn:hover {
+            border-color: #cbd5e1;
+            color: #cbd5e1;
+            transform: none;
+            box-shadow: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="ui">
+        <h1>ASTRO DRIFT</h1>
+        <div id="score-board">Distance: 0</div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="game-over">
+        <h2 style="color: #a855f7; margin-top: 0; font-size: 2rem;">CRITIAL IMPACT</h2>
+        <p style="font-size: 1.2rem;">Distance: <span id="final-score" style="color: white; font-weight: bold;">0</span>
+        </p>
+        <button class="btn" onclick="resetGame()">Relaunch</button>
+        <button class="btn outline-btn" onclick="window.parent.location.href='/home'">Abort Mission</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score-board');
+        const gameOverEl = document.getElementById('game-over');
+        const finalScoreEl = document.getElementById('final-score');
+
+        // Fullscreen canvas
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Game State
+        let score = 0;
+        let gameOver = false;
+        let particles = [];
+        let stars = [];
+        let obstacles = [];
+        let frames = 0;
+        let speed = 5;
+
+        // Player
+        const ship = {
+            x: window.innerWidth / 2,
+            y: window.innerHeight - 100,
+            w: 30,
+            h: 40,
+            vx: 0,
+            vy: 0,
+            angle: 0
+        };
+
+        const keys = { ArrowLeft: false, ArrowRight: false };
+
+        document.addEventListener('keydown', e => {
+            if (keys.hasOwnProperty(e.code)) keys[e.code] = true;
+        });
+
+        document.addEventListener('keyup', e => {
+            if (keys.hasOwnProperty(e.code)) keys[e.code] = false;
+        });
+
+        function init() {
+            // Generate Stars
+            stars = [];
+            for (let i = 0; i < 100; i++) {
+                stars.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    size: Math.random() * 2,
+                    speed: Math.random() * 3 + 0.5
+                });
+            }
+            obstacles = [];
+            particles = [];
+            score = 0;
+            frames = 0;
+            speed = 5;
+            ship.x = canvas.width / 2;
+            ship.vx = 0;
+            gameOver = false;
+            gameOverEl.style.display = 'none';
+            scoreEl.innerText = 'Distance: 0';
+            loop();
+        }
+
+        function spawnObstacle() {
+            const size = Math.random() * 40 + 20;
+            obstacles.push({
+                x: Math.random() * (canvas.width - size),
+                y: -size,
+                w: size,
+                h: size,
+                type: Math.random() < 0.2 ? 'coin' : 'rock'
+            });
+        }
+
+        function createParticles(x, y, color) {
+            for (let i = 0; i < 8; i++) {
+                particles.push({
+                    x, y,
+                    vx: (Math.random() - 0.5) * 5,
+                    vy: (Math.random() - 0.5) * 5,
+                    life: 1,
+                    color
+                });
+            }
+        }
+
+        function drawShip() {
+            ctx.save();
+            ctx.translate(ship.x, ship.y);
+            ctx.rotate(ship.vx * 0.05);
+
+            // Draw Ship Body
+            ctx.beginPath();
+            ctx.moveTo(0, -ship.h / 2);
+            ctx.lineTo(ship.w / 2, ship.h / 2);
+            ctx.lineTo(0, ship.h / 2 - 5); // engine notch
+            ctx.lineTo(-ship.w / 2, ship.h / 2);
+            ctx.closePath();
+            ctx.fillStyle = '#cbd5e1';
+            ctx.fill();
+
+            // Draw Engine Glow
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = '#6366f1';
+            ctx.beginPath();
+            ctx.moveTo(-5, ship.h / 2 - 5);
+            ctx.lineTo(5, ship.h / 2 - 5);
+            ctx.lineTo(0, ship.h / 2 + Math.random() * 20 + 5);
+            ctx.closePath();
+            ctx.fillStyle = '#6366f1';
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function update() {
+            if (gameOver) return;
+
+            // Movement
+            if (keys.ArrowLeft) ship.vx -= 0.8;
+            if (keys.ArrowRight) ship.vx += 0.8;
+
+            // Friction
+            ship.vx *= 0.92;
+            ship.x += ship.vx;
+
+            // Boundaries
+            if (ship.x < 0) ship.x = 0;
+            if (ship.x > canvas.width) ship.x = canvas.width;
+
+            // Background Stars
+            stars.forEach(star => {
+                star.y += star.speed + speed * 0.2;
+                if (star.y > canvas.height) {
+                    star.y = 0;
+                    star.x = Math.random() * canvas.width;
+                }
+            });
+
+            // Obstacles
+            if (frames % 40 === 0) spawnObstacle();
+
+            obstacles.forEach((obs, index) => {
+                obs.y += speed;
+
+                // Collision
+                const dx = (ship.x) - (obs.x + obs.w / 2);
+                const dy = (ship.y) - (obs.y + obs.h / 2);
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist < (ship.w + obs.w) / 2 * 0.8) {
+                    if (obs.type === 'coin') {
+                        score += 500;
+                        createParticles(obs.x + obs.w / 2, obs.y + obs.h / 2, '#fbbf24');
+                        obstacles.splice(index, 1);
+                    } else {
+                        endGame();
+                    }
+                }
+
+                if (obs.y > canvas.height) obstacles.splice(index, 1);
+            });
+
+            // Particles
+            particles.forEach((p, i) => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life -= 0.05;
+                if (p.life <= 0) particles.splice(i, 1);
+            });
+
+            score++;
+            scoreEl.innerText = `Distance: ${Math.floor(score)}`;
+            speed += 0.001; // Accelerate
+            frames++;
+        }
+
+        function draw() {
+            // Clear with trail effect
+            ctx.fillStyle = 'rgba(2, 6, 23, 0.3)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Stars
+            ctx.fillStyle = '#fff';
+            stars.forEach(star => {
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            ctx.shadowBlur = 0; // Reset shadow
+
+            // Obstacles
+            obstacles.forEach(obs => {
+                if (obs.type === 'coin') {
+                    ctx.fillStyle = '#fbbf24';
+                    ctx.shadowColor = '#fbbf24';
+                    ctx.shadowBlur = 10;
+                    ctx.beginPath();
+                    ctx.arc(obs.x + obs.w / 2, obs.y + obs.h / 2, obs.w / 2, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    ctx.fillStyle = '#475569';
+                    ctx.shadowColor = '#000';
+                    ctx.shadowBlur = 0;
+                    ctx.beginPath();
+                    ctx.rect(obs.x, obs.y, obs.w, obs.h);
+                    ctx.fill();
+
+                    // Detail
+                    ctx.strokeStyle = '#64748b';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(obs.x, obs.y, obs.w, obs.h);
+                }
+            });
+            ctx.shadowBlur = 0;
+
+            drawShip();
+
+            // Particles
+            particles.forEach(p => {
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.life;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            });
+        }
+
+        function loop() {
+            if (!gameOver) {
+                update();
+                draw();
+                requestAnimationFrame(loop);
+            }
+        }
+
+        function endGame() {
+            gameOver = true;
+            createParticles(ship.x, ship.y, '#f43f5e');
+            draw(); // Draw one last time to show explosion
+
+            finalScoreEl.innerText = Math.floor(score);
+            gameOverEl.style.display = 'block';
+
+            fetch('/api/score', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    game_id: 'astro-drift',
+                    score: Math.floor(score)
+                })
+            });
+        }
+
+        function resetGame() {
+            init();
+        }
+
+        init();
+    </script>
+</body>
+
+</html>

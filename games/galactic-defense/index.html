@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Galactic Defense</title>
+    <link href="../../static/fonts/inter.css" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            background: #0f172a;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+        }
+
+        #ui {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            margin: 0;
+            background: linear-gradient(to right, #ec4899, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        #score-board {
+            font-size: 1.5rem;
+            margin-top: 10px;
+        }
+
+        canvas {
+            border: 2px solid #ec4899;
+            box-shadow: 0 0 20px #ec4899;
+            background: rgba(13, 17, 23, 0.9);
+        }
+
+        #game-over {
+            display: none;
+            position: absolute;
+            background: rgba(15, 23, 42, 0.95);
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            border: 1px solid #ec4899;
+            box-shadow: 0 0 50px rgba(236, 72, 153, 0.3);
+        }
+
+        .btn {
+            background: #ec4899;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1rem;
+            cursor: pointer;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        .btn:hover {
+            background: #be185d;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="ui">
+        <h1>GALACTIC DEFENSE</h1>
+        <div id="score-board">Score: 0</div>
+        <div style="font-size: 0.9rem; color: #94a3b8;">Arrows to Move • Space to Shoot</div>
+    </div>
+
+    <canvas id="gameCanvas" width="500" height="600"></canvas>
+
+    <div id="game-over">
+        <h2>GAME OVER</h2>
+        <p>Mission Score: <span id="final-score">0</span></p>
+        <button class="btn" onclick="startGame()">Re-Deploy</button>
+        <button class="btn" onclick="window.parent.location.href='/home'"
+            style="background: transparent; color: #94a3b8; border: 1px solid #94a3b8; margin-left: 10px;">Base</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score-board');
+        const gameOverScreen = document.getElementById('game-over');
+        const finalScoreEl = document.getElementById('final-score');
+
+        let score = 0;
+        let isRunning = false;
+        let animationId;
+
+        // Player
+        const player = {
+            x: canvas.width / 2,
+            y: canvas.height - 50,
+            width: 40,
+            height: 40,
+            speed: 5,
+            color: '#3b82f6'
+        };
+
+        let bullets = [];
+        let enemies = [];
+        let enemySpeed = 1;
+        let spawnRate = 60; // Frames
+        let frameCount = 0;
+
+        // Inputs
+        const keys = {
+            ArrowLeft: false,
+            ArrowRight: false,
+            Space: false
+        };
+
+        function startGame() {
+            score = 0;
+            player.x = canvas.width / 2;
+            bullets = [];
+            enemies = [];
+            enemySpeed = 1;
+            frameCount = 0;
+            scoreEl.textContent = `Score: ${score}`;
+            gameOverScreen.style.display = 'none';
+            isRunning = true;
+            animate();
+        }
+
+        function animate() {
+            if (!isRunning) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Player Movement
+            if (keys.ArrowLeft && player.x > 0) player.x -= player.speed;
+            if (keys.ArrowRight && player.x < canvas.width - player.width) player.x += player.speed;
+
+            // Player Shooting (Auto-repeat limited by simple cooldown logic or just one per press? 
+            // Let's do simple spam prevention or just spawn on press. 
+            // Actually, let's auto-fire if holding space every 10 frames)
+            if (keys.Space && frameCount % 10 === 0) {
+                bullets.push({
+                    x: player.x + player.width / 2 - 2,
+                    y: player.y,
+                    width: 4,
+                    height: 10,
+                    color: '#ec4899',
+                    speed: 7
+                });
+            }
+
+            // Draw Player
+            ctx.fillStyle = player.color;
+            // Simple triangle ship
+            ctx.beginPath();
+            ctx.moveTo(player.x + player.width / 2, player.y);
+            ctx.lineTo(player.x + player.width, player.y + player.height);
+            ctx.lineTo(player.x, player.y + player.height);
+            ctx.fill();
+
+            // Update Bullets
+            bullets.forEach((b, index) => {
+                b.y -= b.speed;
+                if (b.y < 0) bullets.splice(index, 1);
+                ctx.fillStyle = b.color;
+                ctx.fillRect(b.x, b.y, b.width, b.height);
+            });
+
+            // Spawn Enemies
+            if (frameCount % spawnRate === 0) {
+                const size = 30;
+                const x = Math.random() * (canvas.width - size);
+                enemies.push({
+                    x: x,
+                    y: -size,
+                    width: size,
+                    height: size,
+                    color: '#ef4444',
+                    speed: enemySpeed
+                });
+                // Increase difficulty
+                if (frameCount % 600 === 0) enemySpeed += 0.2;
+            }
+
+            // Update Enemies
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                let e = enemies[i];
+                e.y += e.speed;
+
+                // Draw Enemy
+                ctx.fillStyle = e.color;
+                ctx.fillRect(e.x, e.y, e.width, e.height);
+                // Neon glow for enemy
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = e.color;
+                ctx.fillRect(e.x, e.y, e.width, e.height);
+                ctx.shadowBlur = 0;
+
+                // Collision with Player
+                if (
+                    player.x < e.x + e.width &&
+                    player.x + player.width > e.x &&
+                    player.y < e.y + e.height &&
+                    player.y + player.height > e.y
+                ) {
+                    endGame();
+                }
+
+                // Collision with Bullets
+                for (let j = bullets.length - 1; j >= 0; j--) {
+                    let b = bullets[j];
+                    if (
+                        b.x < e.x + e.width &&
+                        b.x + b.width > e.x &&
+                        b.y < e.y + e.height &&
+                        b.y + b.height > e.y
+                    ) {
+                        // Hit
+                        enemies.splice(i, 1);
+                        bullets.splice(j, 1);
+                        score += 10;
+                        scoreEl.textContent = `Score: ${score}`;
+                        break;
+                    }
+                }
+
+                // Off screen
+                if (e.y > canvas.height) {
+                    enemies.splice(i, 1);
+                    // Penalty? Or Game Over? Classic Space Invaders is Game Over if reached bottom.
+                    // Let's make it lenient: just lost score? Or Game Over.
+                    // Requirement: "Galactic Defense". Usually defense means don't let them pass.
+                    // Let's GAME OVER if they pass.
+                    endGame();
+                }
+            }
+
+            frameCount++;
+            animationId = requestAnimationFrame(animate);
+        }
+
+        function endGame() {
+            isRunning = false;
+            cancelAnimationFrame(animationId);
+            finalScoreEl.textContent = score;
+            gameOverScreen.style.display = 'block';
+
+            fetch('/api/score', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    game_id: 'galactic-defense',
+                    score: score
+                })
+            });
+        }
+
+        window.addEventListener('keydown', e => {
+            if (e.code === 'Space') keys.Space = true;
+            if (e.code === 'ArrowLeft') keys.ArrowLeft = true;
+            if (e.code === 'ArrowRight') keys.ArrowRight = true;
+        });
+
+        window.addEventListener('keyup', e => {
+            if (e.code === 'Space') keys.Space = false;
+            if (e.code === 'ArrowLeft') keys.ArrowLeft = false;
+            if (e.code === 'ArrowRight') keys.ArrowRight = false;
+        });
+
+        startGame();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Neon Tac Toe</title>
+    <link href="../../static/fonts/inter.css" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            background: #0f172a;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+        }
+
+        #ui {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            margin: 0;
+            background: linear-gradient(to right, #22d3ee, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        #score-board {
+            font-size: 1.5rem;
+            margin-top: 10px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            grid-template-rows: repeat(3, 100px);
+            gap: 10px;
+        }
+
+        .cell {
+            width: 100px;
+            height: 100px;
+            background: rgba(13, 17, 23, 0.8);
+            border: 2px solid #22d3ee;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(34, 211, 238, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .cell:hover {
+            box-shadow: 0 0 20px rgba(34, 211, 238, 0.5);
+        }
+
+        .cell.x {
+            color: #22d3ee;
+            text-shadow: 0 0 20px #22d3ee;
+        }
+
+        .cell.o {
+            color: #f472b6;
+            text-shadow: 0 0 20px #f472b6;
+        }
+
+        .btn {
+            background: #22d3ee;
+            color: #0f172a;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1rem;
+            cursor: pointer;
+            border-radius: 5px;
+            margin-top: 20px;
+            font-weight: bold;
+        }
+
+        .btn:hover {
+            background: #06b6d4;
+        }
+
+        #game-over {
+            display: none;
+            position: absolute;
+            background: rgba(15, 23, 42, 0.95);
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            border: 1px solid #22d3ee;
+            box-shadow: 0 0 50px rgba(34, 211, 238, 0.3);
+            z-index: 10;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="ui">
+        <h1>NEON TAC TOE</h1>
+        <div id="score-board">Session Score: 0</div>
+        <div style="color: #94a3b8; margin-top: 5px;">You: X | AI: O</div>
+    </div>
+
+    <div class="grid" id="grid">
+        <div class="cell" data-index="0"></div>
+        <div class="cell" data-index="1"></div>
+        <div class="cell" data-index="2"></div>
+        <div class="cell" data-index="3"></div>
+        <div class="cell" data-index="4"></div>
+        <div class="cell" data-index="5"></div>
+        <div class="cell" data-index="6"></div>
+        <div class="cell" data-index="7"></div>
+        <div class="cell" data-index="8"></div>
+    </div>
+
+    <div id="game-over">
+        <h2 id="end-title">GAME OVER</h2>
+        <p>Points Earned: <span id="points-earned">0</span></p>
+        <button class="btn" onclick="startNewMatch()">Next Round</button>
+        <button class="btn" onclick="window.parent.location.href='/home'"
+            style="background: transparent; color: #94a3b8; border: 1px solid #94a3b8; margin-left: 10px;">Home</button>
+    </div>
+
+    <script>
+        const cells = document.querySelectorAll('.cell');
+        const scoreEl = document.getElementById('score-board');
+        const gameOverScreen = document.getElementById('game-over');
+        const endTitle = document.getElementById('end-title');
+        const pointsEl = document.getElementById('points-earned');
+
+        let board = ['', '', '', '', '', '', '', '', ''];
+        let sessionScore = 0;
+        let gameActive = true;
+        let currentPlayer = 'X'; // Player is always X
+
+        function checkWin(currentBoard, player) {
+            const wins = [
+                [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
+                [0, 3, 6], [1, 4, 7], [2, 5, 8], // Cols
+                [0, 4, 8], [2, 4, 6]           // Diags
+            ];
+            return wins.some(c => currentBoard[c[0]] === player && currentBoard[c[1]] === player && currentBoard[c[2]] === player);
+        }
+
+        function checkDraw(currentBoard) {
+            return currentBoard.every(cell => cell !== '');
+        }
+
+        function handleCellClick(e) {
+            const idx = e.target.getAttribute('data-index');
+            if (board[idx] !== '' || !gameActive || currentPlayer !== 'X') return;
+
+            makeMove(idx, 'X');
+
+            if (checkWin(board, 'X')) {
+                endGame('win');
+            } else if (checkDraw(board)) {
+                endGame('draw');
+            } else {
+                currentPlayer = 'O';
+                setTimeout(aiMove, 500); // Delay for realism
+            }
+        }
+
+        function makeMove(idx, player) {
+            board[idx] = player;
+            cells[idx].textContent = player;
+            cells[idx].classList.add(player.toLowerCase());
+        }
+
+        function aiMove() {
+            if (!gameActive) return;
+
+            // Simple AI: 1. Win if can, 2. Block if must, 3. Random
+            let move = -1;
+
+            // 1. Try to win
+            move = findWinningMove('O');
+
+            // 2. Block player
+            if (move === -1) move = findWinningMove('X');
+
+            // 3. Random available
+            if (move === -1) {
+                const available = board.map((val, idx) => val === '' ? idx : null).filter(val => val !== null);
+                if (available.length > 0) {
+                    move = available[Math.floor(Math.random() * available.length)];
+                }
+            }
+
+            if (move !== -1) {
+                makeMove(move, 'O');
+                if (checkWin(board, 'O')) {
+                    endGame('lose');
+                } else if (checkDraw(board)) {
+                    endGame('draw');
+                } else {
+                    currentPlayer = 'X';
+                }
+            }
+        }
+
+        function findWinningMove(player) {
+            for (let i = 0; i < 9; i++) {
+                if (board[i] === '') {
+                    board[i] = player;
+                    if (checkWin(board, player)) {
+                        board[i] = ''; // Backtrack
+                        return i;
+                    }
+                    board[i] = ''; // Backtrack
+                }
+            }
+            return -1;
+        }
+
+        function endGame(result) {
+            gameActive = false;
+            let points = 0;
+            if (result === 'win') {
+                points = 100;
+                endTitle.textContent = "VICTORY";
+                endTitle.style.color = "#22d3ee";
+            } else if (result === 'lose') {
+                points = 0; // Or minus?
+                endTitle.textContent = "DEFEAT";
+                endTitle.style.color = "#f472b6";
+            } else {
+                points = 10;
+                endTitle.textContent = "DRAW";
+                endTitle.style.color = "#94a3b8";
+            }
+
+            sessionScore += points;
+            scoreEl.textContent = `Session Score: ${sessionScore}`;
+            pointsEl.textContent = points > 0 ? `+${points}` : "0";
+
+            gameOverScreen.style.display = 'block';
+
+            // Submit accumulative score
+            // We only submit 'sessionScore' as the new high score entry?
+            // Or should we submit each game? 
+            // Let's submit the *Session Score* as the record. 
+            // This encourages playing multiple rounds without reloading.
+            submitScore(sessionScore);
+        }
+
+        function startNewMatch() {
+            board = ['', '', '', '', '', '', '', '', ''];
+            cells.forEach(cell => {
+                cell.textContent = '';
+                cell.className = 'cell';
+            });
+            gameActive = true;
+            currentPlayer = 'X';
+            gameOverScreen.style.display = 'none';
+        }
+
+        function submitScore(score) {
+            fetch('/api/score', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    game_id: 'neon-tac-toe',
+                    score: score
+                })
+            });
+        }
+
+        cells.forEach(cell => cell.addEventListener('click', handleCellClick));
+
+    </script>
+</body>
+
+</html>

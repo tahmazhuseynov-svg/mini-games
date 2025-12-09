@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}Login - Mini Games Arcade{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: center; align-items: center; min-height: 80vh;">
+    <div class="glass-card" style="width: 100%; max-width: 400px; text-align: center;">
+        <h1>Welcome Player</h1>
+        <p style="color: var(--text-muted); margin-bottom: 2rem;">Enter your gamertag to start playing.</p>
+
+        <form action="{{ url_for('login') }}" method="POST">
+            <div class="form-group">
+                <input type="text" id="username" name="username" placeholder="Username" required autocomplete="off">
+                <div class="name-suggestion" id="suggestion-box">
+                    Need a cool name? Try <span id="suggested-name">NeonViper</span>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%;">Enter Arcade</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+const adjectives = ['Neon', 'Cyber', 'Shadow', 'Cosmic', 'Hyper', 'Pixel', 'Turbo', 'Quantum', 'Glitch', 'Retro'];
+const nouns = ['Viper', 'Knight', 'Surfer', 'Ninja', 'Wolf', 'Rider', 'Storm', 'Phantom', 'Master', 'Bot'];
+
+function generateName() {
+const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+const noun = nouns[Math.floor(Math.random() * nouns.length)];
+const num = Math.floor(Math.random() * 99);
+return `${adj}${noun}${num}`;
+}
+
+const suggestionBox = document.getElementById('suggested-name');
+const input = document.getElementById('username');
+
+// Initial random name
+suggestionBox.textContent = generateName();
+
+document.getElementById('suggestion-box').addEventListener('click', () => {
+const newName = suggestionBox.textContent;
+input.value = newName;
+// Generate a new one for next time
+suggestionBox.textContent = generateName();
+});
+{% endblock %}

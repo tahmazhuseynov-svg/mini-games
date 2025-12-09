@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Scores - Mini Games Arcade{% endblock %}
+
+{% block content %}
+<div class="glass-card" style="border-color: rgba(239, 68, 68, 0.3);">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h1
+            style="background: linear-gradient(to right, #ef4444, #f59e0b); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+            Admin Dashboard</h1>
+        <a href="{{ url_for('home') }}" class="btn">&larr; Back to Games</a>
+    </div>
+    <p style="color: #fca5a5; margin-bottom: 1.5rem;">Confidential: IP Addresses visible.</p>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Game</th>
+                <th>Player</th>
+                <th>Score</th>
+                <th>IP Address</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in scores %}
+            <tr>
+                <!-- row structure from get_admin_scores: (game_id, player_name, score, ip_address, timestamp) -->
+                <td>{{ row[4] }}</td>
+                <td style="text-transform: capitalize;">{{ row[0]|replace('-', ' ') }}</td>
+                <td style="font-weight: bold;">{{ row[1] }}</td>
+                <td>{{ row[2] }}</td>
+                <td style="font-family: monospace; color: #fca5a5;">{{ row[3] }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="5" style="text-align: center;">No scores record found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

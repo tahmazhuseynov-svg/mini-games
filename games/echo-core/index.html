@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Echo Core</title>
+    <link href="../../static/fonts/inter.css" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            background: #0f172a;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+        }
+
+        #ui {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            margin: 0;
+            background: linear-gradient(to right, #a855f7, #6366f1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        #score-board {
+            font-size: 1.5rem;
+            margin-top: 10px;
+        }
+
+        .game-board {
+            display: grid;
+            grid-template-columns: 150px 150px;
+            grid-template-rows: 150px 150px;
+            gap: 20px;
+            padding: 20px;
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 50%;
+            border: 4px solid #334155;
+        }
+
+        .pad {
+            width: 150px;
+            height: 150px;
+            background: rgba(30, 41, 59, 0.8);
+            cursor: pointer;
+            transition: all 0.1s;
+            opacity: 0.6;
+        }
+
+        .pad.active {
+            opacity: 1;
+            transform: scale(0.95);
+            box-shadow: 0 0 30px currentColor;
+            /* Uses color property of element */
+        }
+
+        /* Top Left */
+        #pad-0 {
+            border-top-left-radius: 100%;
+            background: #ef4444;
+            color: #ef4444;
+        }
+
+        /* Top Right */
+        #pad-1 {
+            border-top-right-radius: 100%;
+            background: #3b82f6;
+            color: #3b82f6;
+        }
+
+        /* Bottom Left */
+        #pad-2 {
+            border-bottom-left-radius: 100%;
+            background: #eab308;
+            color: #eab308;
+        }
+
+        /* Bottom Right */
+        #pad-3 {
+            border-bottom-right-radius: 100%;
+            background: #10b981;
+            color: #10b981;
+        }
+
+        #game-over {
+            display: none;
+            position: absolute;
+            background: rgba(15, 23, 42, 0.95);
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            border: 1px solid #a855f7;
+            box-shadow: 0 0 50px rgba(168, 85, 247, 0.3);
+            z-index: 10;
+        }
+
+        .status-msg {
+            margin-top: 20px;
+            height: 20px;
+            color: #94a3b8;
+            font-weight: bold;
+        }
+
+        .btn {
+            background: #a855f7;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1rem;
+            cursor: pointer;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="ui">
+        <h1>ECHO CORE</h1>
+        <div id="score-board">Round: 1</div>
+        <div class="status-msg" id="status">Watch the pattern...</div>
+    </div>
+
+    <div class="game-board" id="board">
+        <div class="pad" id="pad-0" data-id="0"></div>
+        <div class="pad" id="pad-1" data-id="1"></div>
+        <div class="pad" id="pad-2" data-id="2"></div>
+        <div class="pad" id="pad-3" data-id="3"></div>
+    </div>
+
+    <div id="game-over">
+        <h2>SYNC FAILED</h2>
+        <p>Final Round: <span id="final-score">1</span></p>
+        <button class="btn" onclick="startNewGame()">Resync</button>
+        <button class="btn" onclick="window.parent.location.href='/home'"
+            style="background: transparent; color: #94a3b8; border: 1px solid #94a3b8; margin-left: 10px;">Home</button>
+    </div>
+
+    <script>
+        const scoreEl = document.getElementById('score-board');
+        const statusEl = document.getElementById('status');
+        const gameOverScreen = document.getElementById('game-over');
+        const finalScoreEl = document.getElementById('final-score');
+        const pads = [
+            document.getElementById('pad-0'),
+            document.getElementById('pad-1'),
+            document.getElementById('pad-2'),
+            document.getElementById('pad-3')
+        ];
+
+        let sequence = [];
+        let playerSequence = [];
+        let round = 0;
+        let isCpuTurn = true;
+        let isGameOver = false;
+
+        function startNewGame() {
+            sequence = [];
+            round = 0;
+            isGameOver = false;
+            gameOverScreen.style.display = 'none';
+            nextRound();
+        }
+
+        function nextRound() {
+            round++;
+            scoreEl.textContent = `Round: ${round}`;
+            playerSequence = [];
+            isCpuTurn = true;
+            statusEl.textContent = "Memorize the sequence...";
+
+            // Add new step
+            sequence.push(Math.floor(Math.random() * 4));
+
+            playSequence();
+        }
+
+        async function playSequence() {
+            // Disable input
+            // Wait a bit
+            await delay(800);
+
+            for (let id of sequence) {
+                activatePad(id);
+                await delay(600); // Time lit
+                await delay(200); // Time off between
+            }
+
+            isCpuTurn = false;
+            statusEl.textContent = "Your turn!";
+        }
+
+        function activatePad(id) {
+            pads[id].classList.add('active');
+            setTimeout(() => {
+                pads[id].classList.remove('active');
+            }, 400);
+
+            // Optional: Simple oscillator beep could go here if we wanted audio
+        }
+
+        function handlePadClick(e) {
+            if (isCpuTurn || isGameOver) return;
+
+            const id = parseInt(e.target.dataset.id);
+            activatePad(id);
+            playerSequence.push(id);
+
+            // Check correct
+            const currentStep = playerSequence.length - 1;
+            if (playerSequence[currentStep] !== sequence[currentStep]) {
+                endGame();
+                return;
+            }
+
+            // Check if round complete
+            if (playerSequence.length === sequence.length) {
+                isCpuTurn = true;
+                statusEl.textContent = "Good! Calculating next...";
+                setTimeout(nextRound, 1000);
+            }
+        }
+
+        function endGame() {
+            isGameOver = true;
+            finalScoreEl.textContent = round;
+            gameOverScreen.style.display = 'block';
+            statusEl.textContent = "Connection Lost.";
+
+            fetch('/api/score', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    game_id: 'echo-core',
+                    score: round
+                })
+            });
+        }
+
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        pads.forEach(pad => pad.addEventListener('click', handlePadClick));
+
+        startNewGame();
+    </script>
+</body>
+
+</html>

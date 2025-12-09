@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Neon Blocks</title>
+    <link href="../../static/fonts/inter.css" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            background: #0f172a;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+        }
+
+        #ui {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            margin: 0;
+            background: linear-gradient(to right, #22d3ee, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 2.5rem;
+            text-shadow: 0 0 20px rgba(34, 211, 238, 0.5);
+        }
+
+        #score-board {
+            font-size: 1.5rem;
+            margin-top: 10px;
+            color: #22d3ee;
+        }
+
+        .game-container {
+            position: relative;
+            border: 2px solid #334155;
+            border-radius: 10px;
+            padding: 5px;
+            background: rgba(15, 23, 42, 0.8);
+            box-shadow: 0 0 30px rgba(34, 211, 238, 0.1);
+        }
+
+        canvas {
+            display: block;
+            border-radius: 5px;
+            background: #1e293b;
+        }
+
+        #game-over {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(15, 23, 42, 0.95);
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            border: 1px solid #22d3ee;
+            z-index: 20;
+            min-width: 200px;
+        }
+
+        .btn {
+            background: #22d3ee;
+            color: #0f172a;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1rem;
+            cursor: pointer;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-weight: bold;
+            transition: all 0.2s;
+            width: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 15px rgba(34, 211, 238, 0.5);
+        }
+
+        .controls-hint {
+            margin-top: 20px;
+            color: #94a3b8;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+
+        .key {
+            display: inline-block;
+            background: #334155;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #e2e8f0;
+            font-size: 0.8rem;
+            margin: 0 2px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="ui">
+        <h1>NEON BLOCKS</h1>
+        <div id="score-board">Score: 0</div>
+    </div>
+
+    <div class="game-container">
+        <canvas id="tetris" width="240" height="400"></canvas>
+
+        <div id="game-over">
+            <h2 style="color: #22d3ee; margin-top: 0;">GAME OVER</h2>
+            <p>Score: <span id="final-score">0</span></p>
+            <button class="btn" onclick="resetGame()">Play Again</button>
+            <button class="btn" onclick="window.parent.location.href='/home'"
+                style="background: transparent; color: #94a3b8; border: 1px solid #334155;">Home</button>
+        </div>
+    </div>
+
+    <div class="controls-hint">
+        <span class="key">←</span> <span class="key">→</span> to Move &nbsp;•&nbsp;
+        <span class="key">↑</span> to Rotate &nbsp;•&nbsp;
+        <span class="key">↓</span> to Drop
+    </div>
+
+    <script>
+        const canvas = document.getElementById('tetris');
+        const context = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score-board');
+        const gameOverScreen = document.getElementById('game-over');
+        const finalScoreElement = document.getElementById('final-score');
+
+        // Scale up everything 20x
+        context.scale(20, 20);
+
+        let score = 0;
+        let lastTime = 0;
+        let dropCounter = 0;
+        let dropInterval = 1000;
+        let isGameOver = false;
+
+        const colors = [
+            null,
+            '#ff0d72', // T
+            '#0dc2ff', // I
+            '#0dff72', // S
+            '#f538ff', // Z
+            '#ff8e0d', // L
+            '#ffe138', // J
+            '#3877ff', // O
+        ];
+
+        const arena = createMatrix(12, 20);
+
+        const player = {
+            pos: { x: 0, y: 0 },
+            matrix: null,
+            score: 0,
+        };
+
+        function createMatrix(w, h) {
+            const matrix = [];
+            while (h--) {
+                matrix.push(new Array(w).fill(0));
+            }
+            return matrix;
+        }
+
+        function createPiece(type) {
+            if (type === 'I') {
+                return [
+                    [0, 1, 0, 0],
+                    [0, 1, 0, 0],
+                    [0, 1, 0, 0],
+                    [0, 1, 0, 0],
+                ];
+            } else if (type === 'L') {
+                return [
+                    [0, 2, 0],
+                    [0, 2, 0],
+                    [0, 2, 2],
+                ];
+            } else if (type === 'J') {
+                return [
+                    [0, 3, 0],
+                    [0, 3, 0],
+                    [3, 3, 0],
+                ];
+            } else if (type === 'O') {
+                return [
+                    [4, 4],
+                    [4, 4],
+                ];
+            } else if (type === 'Z') {
+                return [
+                    [5, 5, 0],
+                    [0, 5, 5],
+                    [0, 0, 0],
+                ];
+            } else if (type === 'S') {
+                return [
+                    [0, 6, 6],
+                    [6, 6, 0],
+                    [0, 0, 0],
+                ];
+            } else if (type === 'T') {
+                return [
+                    [0, 7, 0],
+                    [7, 7, 7],
+                    [0, 0, 0],
+                ];
+            }
+        }
+
+        function draw() {
+            // Fill background
+            context.fillStyle = '#0f172a'; // Clear with background color
+            context.fillRect(0, 0, canvas.width, canvas.height);
+
+            drawMatrix(arena, { x: 0, y: 0 });
+            drawMatrix(player.matrix, player.pos);
+        }
+
+        function drawMatrix(matrix, offset) {
+            matrix.forEach((row, y) => {
+                row.forEach((value, x) => {
+                    if (value !== 0) {
+                        context.fillStyle = colors[value];
+                        context.fillRect(x + offset.x, y + offset.y, 1, 1);
+
+                        // Add glow effect
+                        context.shadowColor = colors[value];
+                        context.shadowBlur = 10;
+
+                        // Inner bevel simulation for 3D look
+                        context.lineWidth = 0.05;
+                        context.strokeStyle = 'rgba(255,255,255,0.5)';
+                        context.strokeRect(x + offset.x, y + offset.y, 1, 1);
+
+                        context.shadowBlur = 0; // Reset
+                    }
+                });
+            });
+        }
+
+        function merge(arena, player) {
+            player.matrix.forEach((row, y) => {
+                row.forEach((value, x) => {
+                    if (value !== 0) {
+                        arena[y + player.pos.y][x + player.pos.x] = value;
+                    }
+                });
+            });
+        }
+
+        function rotate(matrix, dir) {
+            for (let y = 0; y < matrix.length; ++y) {
+                for (let x = 0; x < y; ++x) {
+                    [
+                        matrix[x][y],
+                        matrix[y][x],
+                    ] = [
+                            matrix[y][x],
+                            matrix[x][y],
+                        ];
+                }
+            }
+            if (dir > 0) {
+                matrix.forEach(row => row.reverse());
+            } else {
+                matrix.reverse();
+            }
+        }
+
+        function playerDrop() {
+            player.pos.y++;
+            if (collide(arena, player)) {
+                player.pos.y--;
+                merge(arena, player);
+                playerReset();
+                arenaSweep();
+                updateScore();
+            }
+            dropCounter = 0;
+        }
+
+        function playerMove(offset) {
+            player.pos.x += offset;
+            if (collide(arena, player)) {
+                player.pos.x -= offset;
+            }
+        }
+
+        function playerReset() {
+            const pieces = 'ILJOTSZ';
+            player.matrix = createPiece(pieces[pieces.length * Math.random() | 0]);
+            player.pos.y = 0;
+            player.pos.x = (arena[0].length / 2 | 0) - (player.matrix[0].length / 2 | 0);
+
+            if (collide(arena, player)) {
+                gameOver();
+            }
+        }
+
+        function playerRotate(dir) {
+            const pos = player.pos.x;
+            let offset = 1;
+            rotate(player.matrix, dir);
+            while (collide(arena, player)) {
+                player.pos.x += offset;
+                offset = -(offset + (offset > 0 ? 1 : -1));
+                if (offset > player.matrix[0].length) {
+                    rotate(player.matrix, -dir);
+                    player.pos.x = pos;
+                    return;
+                }
+            }
+        }
+
+        function collide(arena, player) {
+            const [m, o] = [player.matrix, player.pos];
+            for (let y = 0; y < m.length; ++y) {
+                for (let x = 0; x < m[y].length; ++x) {
+                    if (m[y][x] !== 0 &&
+                        (arena[y + o.y] && arena[y + o.y][x + o.x]) !== 0) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        function arenaSweep() {
+            let rowCount = 1;
+            outer: for (let y = arena.length - 1; y > 0; --y) {
+                for (let x = 0; x < arena[y].length; ++x) {
+                    if (arena[y][x] === 0) {
+                        continue outer;
+                    }
+                }
+
+                const row = arena.splice(y, 1)[0].fill(0);
+                arena.unshift(row);
+                ++y;
+
+                player.score += rowCount * 10;
+                rowCount *= 2;
+
+                // Speed up slightly
+                dropInterval = Math.max(100, dropInterval * 0.98);
+            }
+        }
+
+        function updateScore() {
+            scoreElement.innerText = 'Score: ' + player.score;
+        }
+
+        function gameOver() {
+            isGameOver = true;
+            finalScoreElement.innerText = player.score;
+            gameOverScreen.style.display = 'block';
+
+            // Submit score
+            fetch('/api/score', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    game_id: 'neon-blocks',
+                    score: player.score
+                })
+            });
+        }
+
+        function resetGame() {
+            arena.forEach(row => row.fill(0));
+            player.score = 0;
+            updateScore();
+            dropInterval = 1000;
+            gameOverScreen.style.display = 'none';
+            isGameOver = false;
+            playerReset();
+            update();
+        }
+
+        function update(time = 0) {
+            if (isGameOver) return;
+
+            const deltaTime = time - lastTime;
+            lastTime = time;
+
+            dropCounter += deltaTime;
+            if (dropCounter > dropInterval) {
+                playerDrop();
+            }
+
+            draw();
+            requestAnimationFrame(update);
+        }
+
+        document.addEventListener('keydown', event => {
+            if (isGameOver) return;
+
+            if (event.keyCode === 37) {
+                playerMove(-1);
+            } else if (event.keyCode === 39) {
+                playerMove(1);
+            } else if (event.keyCode === 40) {
+                playerDrop();
+            } else if (event.keyCode === 81) {
+                playerRotate(-1);
+            } else if (event.keyCode === 87 || event.keyCode === 38) {
+                playerRotate(1);
+            }
+        });
+
+        playerReset();
+        update();
+    </script>
+</body>
+
+</html>

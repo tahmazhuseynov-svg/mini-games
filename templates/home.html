@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="text-align: center; margin-bottom: 3rem;">
+    <h1>Game Center</h1>
+    <p style="color: var(--text-muted);">Choose a game to play and top the leaderboards.</p>
+</div>
+
+<div class="games-grid">
+    {% for game in games %}
+    <div class="glass-card game-card">
+        <div>
+            <div class="game-title">{{ game.name }}</div>
+            <p style="color: var(--text-muted); font-size: 0.9rem;">
+                {% if game.id == 'neon-pong' %}Classic retro paddle battle.{% endif %}
+                {% if game.id == 'cyber-snake' %}Eat bits, grow longer, don't crash.{% endif %}
+                {% if game.id == 'brk-out' %}Smash bricks with physics.{% endif %}
+                {% if game.id == 'neon-tac-toe' %}Strategic grid warfare vs AI.{% endif %}
+                {% if game.id == 'cyber-2048' %}Merge numbers to reach singularity.{% endif %}
+                {% if game.id == 'galactic-defense' %}Defend base from alien invasion.{% endif %}
+                {% if game.id == 'neon-match' %}Test your memory with neon cards.{% endif %}
+                {% if game.id == 'cyber-hop' %}Jump, dodge, and survive.{% endif %}
+                {% if game.id == 'echo-core' %}Follow the pattern, stay in sync.{% endif %}
+                {% if game.id == 'neon-blocks' %}Classic falling blocks.{% endif %}
+                {% if game.id == 'cyber-sweeper' %}Decipher the grid, avoid glitches.{% endif %}
+                {% if game.id == 'astro-drift' %}Drift through space, dodge debris.{% endif %}
+            </p>
+        </div>
+        <a href="{{ url_for('play_game', game_id=game.id) }}" class="btn btn-primary" style="margin-top: 1.5rem;">Play
+            Now</a>
+    </div>
+    {% else %}
+    <p>No games found in the games folder.</p>
+    {% endfor %}
+</div>
+
+<div class="glass-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <h2>Top 10 Global Scores</h2>
+        <a href="{{ url_for('view_scores') }}" style="font-size: 0.9rem;">View All Scores &rarr;</a>
+    </div>
+
+    <div id="leaderboard-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Game</th>
+                    <th>Player</th>
+                    <th>Score</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in scores %}
+                <tr>
+                    <td style="text-transform: capitalize;">{{ row[0]|replace('-', ' ') }}</td>
+                    <td>{{ row[1] }}</td>
+                    <td style="font-weight: bold; color: var(--accent-color);">{{ row[2] }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="3" style="text-align: center; color: var(--text-muted);">No scores yet. Play a game!
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+// Fetch global top scores (simulated by fetching recent high scores from API or just using the full list API and
+slicing)
+// Since we don't have a specific "global top 10" API, we can just fetch all scores and sort them Client side or just
+make a simple API for it.
+// For now, let's just reuse the /scores page logic or fetch from a helper API.
+// Actually simplicity: Let's fetch /api/top_scores/neon-pong (example) or better, let's assume we can fetch all.
+// I'll leave the "Loading..." and fetch via JS for dynamic feel, or I can pass it from Flask.
+// Let's passed it from Flask in a real app, but for "dynamic" feel I'll use JS if I made an API.
+// I made /api/top_scores/<game_id>.
+    // But here I want "Global".
+    // I'll fetch `get_all_scores` in the `home` route and pass the first 10.
+
+    // WAIT: I didn't pass `scores` to `home` in app.py. I should fix app.py or fetch via JS if I add an API.
+    // Let's simply fix `app.py` later or just Fetch the page /scores and parse? No that's ugly.
+    // Let's add a quick JS fetch to a new endpoint OR just use what I have.
+    // I will modify app.py in next step to pass `top_scores` to home, OR I can just render it here if I passed it.
+    // I didn't pass it.
+
+    // Plan B: Use JS to fetch simple Top 10 if I add the endpoint.
+    // Let's Fetch /api/top_scores/neon-pong as a placeholder or simply redirect user to scores.
+    // User Requirement: "link for view all scores".
+
+    // I will output the table structure here and populate it if `top_scores` variable existed, but since I didn't pass
+    it,
+    // I'll update app.py to pass it, it's the robust way.
+
+    // For this file (home.html), I will assume `top_scores` is passed from backend.
+
+    /*
+    Wait, I am in the middle of tool calls. Passing `top_scores` in app.py is easy.
+    I'll use the variable `recent_scores` passed from backend.
+    */
+    {% endblock %}

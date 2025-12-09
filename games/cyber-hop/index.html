@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Cyber Hop</title>
+    <link href="../../static/fonts/inter.css" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            background: #0f172a;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+        }
+
+        #ui {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            margin: 0;
+            background: linear-gradient(to right, #f97316, #fb923c);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        #score-board {
+            font-size: 1.5rem;
+            margin-top: 10px;
+        }
+
+        canvas {
+            border: 2px solid #f97316;
+            box-shadow: 0 0 20px #f97316;
+            background: rgba(13, 17, 23, 0.9);
+        }
+
+        #game-over {
+            display: none;
+            position: absolute;
+            background: rgba(15, 23, 42, 0.95);
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            border: 1px solid #f97316;
+            box-shadow: 0 0 50px rgba(249, 115, 22, 0.3);
+        }
+
+        .btn {
+            background: #f97316;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1rem;
+            cursor: pointer;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        .btn:hover {
+            background: #ea580c;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="ui">
+        <h1>CYBER HOP</h1>
+        <div id="score-board">Score: 0</div>
+        <div style="font-size: 0.9rem; color: #94a3b8;">Space / Click to Jump</div>
+    </div>
+
+    <canvas id="gameCanvas" width="400" height="600"></canvas>
+
+    <div id="game-over">
+        <h2>CRASHED!</h2>
+        <p>Distance: <span id="final-score">0</span></p>
+        <button class="btn" onclick="startGame()">Reboot</button>
+        <button class="btn" onclick="window.parent.location.href='/home'"
+            style="background: transparent; color: #94a3b8; border: 1px solid #94a3b8; margin-left: 10px;">Home</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score-board');
+        const gameOverScreen = document.getElementById('game-over');
+        const finalScoreEl = document.getElementById('final-score');
+
+        let score = 0;
+        let isRunning = false;
+        let animationId;
+
+        // Bird
+        const bird = {
+            x: 50,
+            y: 150,
+            width: 20,
+            height: 20,
+            velocity: 0,
+            gravity: 0.6,
+            jump: -8,
+            color: '#f97316'
+        };
+
+        let pipes = [];
+        let frameCount = 0;
+        let pipeSpeed = 3;
+
+        function startGame() {
+            score = 0;
+            bird.y = 150;
+            bird.velocity = 0;
+            pipes = [];
+            frameCount = 0;
+            scoreEl.textContent = `Score: ${score}`;
+            gameOverScreen.style.display = 'none';
+            isRunning = true;
+            animate();
+        }
+
+        function animate() {
+            if (!isRunning) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Bird Physics
+            bird.velocity += bird.gravity;
+            bird.y += bird.velocity;
+
+            // Draw Bird
+            ctx.fillStyle = bird.color;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = bird.color;
+            ctx.fillRect(bird.x, bird.y, bird.width, bird.height);
+            ctx.shadowBlur = 0;
+
+            // Floor/Ceiling collision
+            if (bird.y + bird.height > canvas.height || bird.y < 0) {
+                endGame();
+            }
+
+            // Generate Pipes
+            if (frameCount % 90 === 0) {
+                let gap = 150;
+                let topHeight = Math.random() * (canvas.height - gap - 100) + 50;
+                pipes.push({
+                    x: canvas.width,
+                    topHeight: topHeight,
+                    bottomY: topHeight + gap,
+                    width: 50,
+                    passed: false
+                });
+            }
+
+            // Update Pipes
+            for (let i = pipes.length - 1; i >= 0; i--) {
+                let p = pipes[i];
+                p.x -= pipeSpeed;
+
+                // Draw Pipes
+                ctx.fillStyle = '#334155';
+                ctx.fillRect(p.x, 0, p.width, p.topHeight);
+                ctx.fillRect(p.x, p.bottomY, p.width, canvas.height - p.bottomY);
+
+                // Neon edges
+                ctx.strokeStyle = '#94a3b8';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(p.x, 0, p.width, p.topHeight);
+                ctx.strokeRect(p.x, p.bottomY, p.width, canvas.height - p.bottomY);
+
+                // Collision
+                if (
+                    bird.x < p.x + p.width &&
+                    bird.x + bird.width > p.x &&
+                    (bird.y < p.topHeight || bird.y + bird.height > p.bottomY)
+                ) {
+                    endGame();
+                }
+
+                // Score
+                if (p.x + p.width < bird.x && !p.passed) {
+                    score++;
+                    scoreEl.textContent = `Score: ${score}`;
+                    p.passed = true;
+                }
+
+                // Remove off-screen
+                if (p.x + p.width < 0) pipes.splice(i, 1);
+            }
+
+            frameCount++;
+            animationId = requestAnimationFrame(animate);
+        }
+
+        function jump() {
+            if (!isRunning) return;
+            bird.velocity = bird.jump;
+        }
+
+        function endGame() {
+            isRunning = false;
+            cancelAnimationFrame(animationId);
+            finalScoreEl.textContent = score;
+            gameOverScreen.style.display = 'block';
+
+            fetch('/api/score', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    game_id: 'cyber-hop',
+                    score: score
+                })
+            });
+        }
+
+        window.addEventListener('keydown', e => {
+            if (e.code === 'Space') {
+                e.preventDefault(); // prevent scroll
+                if (isRunning) jump();
+                else if (gameOverScreen.style.display === 'block') startGame();
+            }
+        });
+
+        canvas.addEventListener('mousedown', () => {
+            if (isRunning) jump();
+        });
+
+        // Don't auto-start, wait for prompt? 
+        // Let's auto-start for simplicity, or add a 'Click to Start' overlay.
+        // The current UI just shows "Score: 0" and bird falls directly. 
+        // Let's keep it simple: Start immediately.
+        startGame();
+    </script>
+</body>
+
+</html>

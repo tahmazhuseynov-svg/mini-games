@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Pong</title>
+    <!-- Google Fonts: Orbitron for that Sci-Fi/Cyberpunk look -->
+    <link href="../../static/fonts/orbitron.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div id="ui-layer">
+            <div id="start-screen" class="active">
+                <h1>NEON PONG</h1>
+                <p>Mouse to Move</p>
+                <button id="start-btn">INITIALIZE</button>
+            </div>
+            <div id="game-over-screen">
+                <h1>GAME OVER</h1>
+                <p id="final-score">Score: 0</p>
+                <button id="restart-btn">RETRY</button>
+                <button onclick="window.parent.location.href='/home'"
+                    style="margin-top: 10px; font-size: 0.8rem; background: transparent; border: 1px solid white; color: white; padding: 5px 10px; cursor: pointer;">HOME</button>
+            </div>
+            <div id="score-board">
+                <span id="player-score">0</span>
+                <span class="divider">:</span>
+                <span id="ai-score">0</span>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Leaderboard - Mini Games Arcade{% endblock %}
+
+{% block content %}
+<div class="glass-card">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h1>Global Leaderboard</h1>
+        <a href="{{ url_for('home') }}" class="btn">&larr; Back to Games</a>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Game</th>
+                <th>Player</th>
+                <th>Score</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in scores %}
+            <tr>
+                <!-- row structure from get_all_scores: (game_id, player_name, score, timestamp) -->
+                <td>{{ row[3] }}</td>
+                <td style="text-transform: capitalize;">{{ row[0]|replace('-', ' ') }}</td>
+                <td style="font-weight: bold; color: var(--primary-color);">{{ row[1] }}</td>
+                <td>{{ row[2] }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="4" style="text-align: center; color: var(--text-muted);">No scores yet. Be the first!</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

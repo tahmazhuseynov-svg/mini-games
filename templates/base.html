@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Mini Games Arcade{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="{{ url_for('static', filename='fonts/inter.css') }}" rel="stylesheet">
+</head>
+
+<body>
+    {% if session.get('username') %}
+    <nav class="navbar">
+        <a href="{{ url_for('home') }}" class="nav-logo">ARCADE</a>
+        <div class="nav-links">
+            <a href="{{ url_for('home') }}">Games</a>
+            <a href="{{ url_for('view_scores') }}">Scores</a>
+            <!-- <a href="{{ url_for('admin_scores') }}">Admin</a> Hidden to keep UI clean, but accessible via URL -->
+            <a href="{{ url_for('logout') }}" style="color: #ef4444;">Logout ({{ session['username'] }})</a>
+        </div>
+    </nav>
+    {% endif %}
+
+    <div class="container">
+        {% block content %}{% endblock %}
+    </div>
+
+    <div class="footer">
+        &copy; 2025 Mini Games Project. All scores tracked locally.
+    </div>
+
+    <script>
+        {% block scripts %} {% endblock %}
+    </script>
+</body>
+
+</html>
